@@ -1,0 +1,8 @@
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00008.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00008.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00009.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00009.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00010.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00010.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00004.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00004.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00005.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00005.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00007.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00007.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00006.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00006.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00002.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00002.png

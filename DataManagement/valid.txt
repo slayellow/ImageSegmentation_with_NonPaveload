@@ -1,0 +1,2 @@
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00003.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00003.png
+/Users/jinseokhong/data/GTA5Dataset/img_dir/00001.png /Users/jinseokhong/data/GTA5Dataset/ann_dir/00001.png

@@ -1,143 +1,147 @@
-# --------------CPU Only------------------
-# import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# --------------CPU Only------------------
-import timeit
-from Data.data_loader import DataLoader
-from model.fcn import ModelFCN
-from model.segnet import ModelSegNet
-from model.deeplab_v1 import ModelDeepLab_v1
-from model.deeplab_v2 import ModelDeepLab_v2
-from model.deeplab_v3 import ModelDeepLab_v3
-from model.deeplab_v3_plus import ModelDeepLab_v3_Plus
-import util.util_func as uc
-from model.unet import ModelUNet
-import tensorflow as tf
-import tkinter
-from tkinter import filedialog
+import torch.autograd
 
-if not tf.test.gpu_device_name():
-    print("No GPU Found!")
+from DataManagement.data_management import *
+from ModelManagement.PytorchModel.DeepLab_V3 import *
+from UtilityManagement.AverageMeter import *
+from ModelManagement.evaluator import Evaluator
+import time
+
+
+learning_rate = cf.network_info['learning_rate']
+gpu_check = is_gpu_avaliable()
+devices = torch.device("cuda") if gpu_check else torch.device("cpu")
+
+eval = Evaluator(cf.NUM_CLASSES)
+
+trainingset = GTA5Dataset(cf.paths['train_dataset_file'])
+data_loader = get_loader(trainingset, batch_size=cf.network_info['batch_size'], shuffle=True, num_worker=cf.network_info['num_worker'])
+
+validationset = GTA5Dataset(cf.paths['valid_dataset_file'])
+valid_loader = get_loader(validationset, batch_size=cf.network_info['batch_size'], shuffle=False, num_worker=cf.network_info['num_worker'])
+
+# model test code
+model = DeepLab(101, cf.NUM_CLASSES).to(devices)
+
+criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='mean')
+
+optimizer = set_SGD(model, learning_rate=learning_rate)
+
+best_pred = 0.0
+
+pretrained_path = cf.paths['pretrained_path']
+if os.path.isfile(os.path.join(pretrained_path, model.get_name() + '.pth')):
+    print("Pretrained Model Open : ", model.get_name() + ".pth")
+    checkpoint = load_weight_file(os.path.join(pretrained_path, model.get_name() + '.pth'))
+    start_epoch = checkpoint['epoch']
+    load_weight_parameter(model, checkpoint['state_dict'])
+    load_weight_parameter(optimizer, checkpoint['optimizer'])
+    best_pred = checkpoint['best_pred']
 else:
-    print("Default GPU Device : {}".format(tf.test.gpu_device_name()))
+    print("No Pretrained Model")
+    start_epoch = 0
+
+for epoch in range(start_epoch, cf.network_info['epochs']):
+
+    # Learning Rate 조절하기
+    lr = learning_rate * (0.1 ** (epoch // 10))  # ResNet Lerarning Rate
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+
+    model.train()
+
+    end = time.time()
+
+    for i_batch, sample_bathced in enumerate(data_loader):
+        data_time.update(time.time() - end)
+
+        source = sample_bathced['source']
+        target = sample_bathced['target'].squeeze()
+        target *= 255.0
+        target = target.type(torch.long)
+        if gpu_check:
+            source = source.to(devices)
+            target = target.to(devices)
+
+        output = model(source)
+        loss = criterion(output, target)
+
+        losses.update(loss.item(), source.size(0))
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if i_batch % cf.network_info['freq_print'] == 0:
+            print('Epoch: [{0}][{1}/{2}]\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(epoch+1, i_batch+1, len(data_loader),
+                                                        batch_time=batch_time, data_time=data_time, loss=losses))
+
+    valid_batch_time = AverageMeter()
+    valid_data_time = AverageMeter()
+    valid_losses = AverageMeter()
+
+    model.eval()
+    eval.reset()
+
+    end = time.time()
+    for i_batch, sample_bathced in enumerate(valid_loader):
+        data_time.update(time.time() - end)
+
+        source = sample_bathced['source']
+        target = sample_bathced['target'].squeeze()
+        target *= 255.0
+        target = target.type(torch.long)
+        if gpu_check:
+            source = source.to(devices)
+            target = target.to(devices)
+
+        output = model(source)
+        loss = criterion(output, target)
+
+        losses.update(loss.item(), source.size(0))
+
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        pred = output.data.cpu().numpy()
+        target = target.cpu().numpy()
+        pred = np.argmax(pred, axis=1)
+        eval.add_batch(target, pred)
+
+        if i_batch % cf.network_info['freq_print'] == 0:
+            print('Test: [{0}/{1}]\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(i_batch+1, len(valid_loader),
+                                                        batch_time=batch_time, data_time=data_time, loss=losses))
 
 
-def main(argv=None):
-    logs_dir = 'logs/DEEPLAB_V3_PLUS/'
-    num_class = 2
-    max_iteration = 50430
-    batch_size = 2
+    Acc = eval.Pixel_Accuracy()
+    Acc_class = eval.Pixel_Accuracy_Class()
+    mIoU = eval.Mean_Intersection_over_Union()
+    FWIoU = eval.Frequency_Weighted_Intersection_over_Union()
 
-    # Model Size Variable
-    image_shape = (480, 640)
+    print("* Validation --> Acc:{}, Acc_class:{}, mIoU:{}, fwIoU: {}".format(Acc, Acc_class, mIoU, FWIoU))
 
-    root = tkinter.Tk()
-    root.withdraw()
-    img_path = filedialog.askdirectory(parent=root, initialdir="/", title='Please Input Image Dir')
-    label_path = filedialog.askdirectory(parent=root, initialdir="/", title='Please Label Image Dir')
+    new_pred = mIoU
+    if new_pred  > best_pred:
+        best_pred = new_pred
 
-    tf.compat.v1.reset_default_graph()
-
-    # Dropout
-    keep_prob = tf.compat.v1.placeholder(tf.float32, name="dropout_rate")
-
-    # Image & Correct Label
-    # ---------------- 1. General Case ----------------
-    # image = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="input_image")
-    # correct_label = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="correct_label")
-
-    # ---------------- 2. You Know Image Shape ----------------
-    image = tf.compat.v1.placeholder(tf.float32, shape=[batch_size, image_shape[0], image_shape[1], 3],
-                                     name="input_image")
-
-    # Correct Label : 2
-    correct_label = tf.compat.v1.placeholder(tf.float32, shape=[batch_size, image_shape[0], image_shape[1], 2],
-                                             name="correct_label")
-
-    # ------------------ DeepLab_v1 Model --------------------
-    # model = ModelDeepLab_v1(npy_path='./model/vgg16.npy')
-    # layer = model.build_model(image, classes=num_class, keep_prob=keep_prob)
-
-    # ------------------- DeepLab_v2 Model ------------------------
-    # model = ModelDeepLab_v2()
-    # layer = model.build_model(image, classes=num_class, first=64)
-
-    # ------------------ DeepLab_V3 Model ----------------------------
-    # model = ModelDeepLab_v3(block_list=[3, 4, 23, 3])
-    # layer = model.build_model(image, classes=num_class, first=256)
-
-    # ----------------- DeepLab_V3+ Model -------------------
-    model = ModelDeepLab_v3_Plus()
-    layer = model.build_model(image, classes=num_class, first=16, flow=16)
-    _, train_op, loss_op, accuracy, mIoU, update_op = model.optimize_model(layer, correct_label, learning_rate=1e-5,
-                                                                           num_classes=num_class)
-
-    tf.compat.v1.summary.scalar("loss_op", loss_op)
-    tf.compat.v1.summary.scalar("accuracy", accuracy)
-    merged = tf.compat.v1.summary.merge_all()
-    writer = tf.compat.v1.summary.FileWriter(logs_dir)
-
-    # Get Total Parameter
-    total_parameter = 0
-    print("--------------------")
-    print(" Model Parameter Size ")
-    for variable in tf.compat.v1.trainable_variables():
-        print("--------------------")
-        shape = variable.get_shape()
-        print("DType : %s" % str(variable.dtype))
-        print("Shape : %s" % str(shape))
-        print("Shape Length : %s" % str(len(shape)))
-        variable_parameter = 1
-        for dim in shape:
-            print("Dimension : %s" % str(dim))
-            variable_parameter *= dim
-        print("Variable Parameter : %s" % str(variable_parameter))
-        total_parameter += variable_parameter
-    print("Total Paramters : %s" % str(total_parameter))
-
-    train_data_loader = DataLoader(img_path, label_path, batch_size=batch_size)
-
-    ### GPU Setting
-    config = tf.compat.v1.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.compat.v1.Session(config=config)
-
-    # --------------CPU Only------------------
-    # sess = tf.compat.v1.Session()
-    # --------------CPU Only------------------
-
-    saver = tf.compat.v1.train.Saver()
-    sess.run(tf.compat.v1.global_variables_initializer())
-    sess.run(tf.compat.v1.local_variables_initializer())
-    ckpt = tf.train.get_checkpoint_state(logs_dir)
-    if ckpt and ckpt.model_checkpoint_path:
-        saver.restore(sess, ckpt.model_checkpoint_path)
-        print("Model Restored")
-
-    for itr in range(max_iteration):
-        images, labels = train_data_loader.get_data_label()
-        feed_dict = {image: images, correct_label: labels, keep_prob: 0.5}
-
-        merge, _ = sess.run([merged, train_op], feed_dict=feed_dict)
-        writer.add_summary(merge, itr)
-
-        sess.run(update_op, feed_dict=feed_dict)
-        miou = sess.run(mIoU, feed_dict=feed_dict)
-
-        if itr % 1000 == 0 and itr > 0:
-            print("Saving Model to file in %s" % logs_dir)
-            saver.save(sess, logs_dir + "model.ckpt", itr)
-
-        if itr % 100 == 0:
-            feed_dict = {image: images, correct_label: labels, keep_prob: 1}
-            total_loss = sess.run(loss_op, feed_dict=feed_dict)
-            cur_accuracy = sess.run(accuracy, feed_dict=feed_dict)
-            print("Step %s, Train Loss = %s ,Accuracy : %s, mIoU : %s ||  Memory Use : %s GB" % (
-                str(itr), str(total_loss), str(cur_accuracy), str(miou), str(uc.memory())))
+    save_checkpoint({
+        'epoch': epoch + 1,
+        'arch' : model.get_name(),
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'best_pred': best_pred}, False, os.path.join(pretrained_path, model.get_name()),'pth')
 
 
-start_time = timeit.default_timer()
-main()
-print("Finished")
-terminate_time = timeit.default_timer()
-print("Program Execute Time : %f Second" % (terminate_time - start_time))
+print("Train Finished!!")
