@@ -6,6 +6,7 @@ from UtilityManagement.AverageMeter import *
 from ModelManagement.evaluator import Evaluator
 import time
 
+save_datalist()
 
 learning_rate = cf.network_info['learning_rate']
 gpu_check = is_gpu_avaliable()
@@ -82,7 +83,7 @@ for epoch in range(start_epoch, cf.network_info['epochs']):
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(epoch+1, i_batch+1, len(data_loader),
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(epoch+1, i_batch, len(data_loader),
                                                         batch_time=batch_time, data_time=data_time, loss=losses))
 
     valid_batch_time = AverageMeter()
@@ -91,6 +92,8 @@ for epoch in range(start_epoch, cf.network_info['epochs']):
 
     model.eval()
     eval.reset()
+    source = None
+    output = None
 
     end = time.time()
     for i_batch, sample_bathced in enumerate(valid_loader):
@@ -121,9 +124,27 @@ for epoch in range(start_epoch, cf.network_info['epochs']):
             print('Test: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(i_batch+1, len(valid_loader),
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(i_batch, len(valid_loader),
                                                         batch_time=batch_time, data_time=data_time, loss=losses))
 
+    # Input Image, Predict Image Show
+    img = source.cpu().numpy()
+    pred = output.data.cpu().numpy()
+    pred = np.argmax(pred, axis=1)
+    segmap = np.array(pred[0]).astype(np.uint8)
+    segmap = decode_segmap(segmap)
+    img = np.transpose(img[0], axes=[1, 2, 0])
+    ann = target.cpu().numpy()
+    ann = np.array(ann[0]).astype(np.uint8)
+    ann = decode_segmap(ann)
+    plt.figure()
+    plt.subplot(311)
+    plt.imshow(img)
+    plt.subplot(312)
+    plt.imshow(segmap)
+    plt.subplot(313)
+    plt.imshow(ann)
+    plt.savefig('Result_' + str(epoch) + '.png')
 
     Acc = eval.Pixel_Accuracy()
     Acc_class = eval.Pixel_Accuracy_Class()

@@ -4,10 +4,10 @@ import numpy as np
 # 데이터셋 관련 경로
 
 paths = dict(
-    img_dir = "/Users/jinseokhong/data/GTA5Dataset/img_dir",
-    ann_dir = "/Users/jinseokhong/data/GTA5Dataset/ann_dir",
-    train_dataset_file = "/Users/jinseokhong/PycharmProjects/ImageSegmentation_with_NonPaveload/DataManagement/train.txt",
-    valid_dataset_file = "/Users/jinseokhong/PycharmProjects/ImageSegmentation_with_NonPaveload/DataManagement/valid.txt",
+    img_dir = "/home/HONG/GTA5_Dataset/img_dir",
+    ann_dir = "/home/HONG/GTA5_Dataset/ann_dir",
+    train_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/train.txt",
+    valid_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/valid.txt",
     pretrained_path = "/home/HONG/PretrainedParameter",
 )
 #
@@ -18,6 +18,8 @@ paths = dict(
 #     validation_img_result_path = "/Users/jinseokhong/data/CalibNet_Result"
 # )
 
+IMG_WIDTH = 480
+IMG_HEIGHT = 640
 NUM_CLASSES = 19
 palette = np.array([
     [128, 64, 128],
@@ -44,9 +46,9 @@ palette = np.array([
 # 네트워크 구성 관련 파라메타
 
 network_info = dict(
-    batch_size = 2,                        # batch_size take during training
+    batch_size = 8,                        # batch_size take during training
     epochs = 100,                            # total number of epoch
     learning_rate = 0.1,                   # learining rate
-    freq_print = 1,
-    num_worker = 0
+    freq_print = 10,
+    num_worker = 4
 )

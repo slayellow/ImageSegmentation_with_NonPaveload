@@ -40,7 +40,7 @@ def decode_segmap(mask):
         r[mask == label] = label_color[label, 0]
         g[mask == label] = label_color[label, 1]
         b[mask == label] = label_color[label, 2]
-    rgb = np.zeros((mask.shape[1], mask.shape[2], 3))
+    rgb = np.zeros((mask.shape[0], mask.shape[1], 3))
     rgb[:, :, 0] = r / 255.0
     rgb[:, :, 1] = g / 255.0
     rgb[:, :, 2] = b / 255.0
@@ -56,6 +56,7 @@ class GTA5Dataset(Dataset):
         self.ann = self.dataset[:, 1]
 
         self.transform = transforms.Compose([
+            transforms.Resize((cf.IMG_WIDTH, cf.IMG_HEIGHT), interpolation=transforms.InterpolationMode.NEAREST),
             transforms.ToTensor()])
 
         self.void_classes = [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1, 34]
@@ -80,7 +81,6 @@ class GTA5Dataset(Dataset):
         ann = np.array(Image.open(self.ann[idx]), dtype=np.uint8)
         ann = self.encode_segmap(ann)
         target = Image.fromarray(ann)
-
 
         data = {'source': self.transform(img), 'target': self.transform(target)}
         return data
