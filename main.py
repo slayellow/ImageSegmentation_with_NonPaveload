@@ -18,7 +18,7 @@ trainingset = GTA5Dataset(cf.paths['train_dataset_file'])
 data_loader = get_loader(trainingset, batch_size=cf.network_info['batch_size'], shuffle=True, num_worker=cf.network_info['num_worker'])
 
 validationset = GTA5Dataset(cf.paths['valid_dataset_file'])
-valid_loader = get_loader(validationset, batch_size=cf.network_info['batch_size'], shuffle=False, num_worker=cf.network_info['num_worker'])
+valid_loader = get_loader(validationset, batch_size=int(cf.network_info['batch_size']/2), shuffle=False, num_worker=cf.network_info['num_worker'])
 
 # model test code
 model = DeepLab(101, cf.NUM_CLASSES).to(devices)
@@ -134,7 +134,7 @@ for epoch in range(start_epoch, cf.network_info['epochs']):
     segmap = np.array(pred[0]).astype(np.uint8)
     segmap = decode_segmap(segmap)
     img = np.transpose(img[0], axes=[1, 2, 0])
-    ann = target.cpu().numpy()
+    ann = target
     ann = np.array(ann[0]).astype(np.uint8)
     ann = decode_segmap(ann)
     plt.figure()

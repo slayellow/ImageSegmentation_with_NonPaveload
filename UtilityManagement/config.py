@@ -46,7 +46,7 @@ palette = np.array([
 # 네트워크 구성 관련 파라메타
 
 network_info = dict(
-    batch_size = 8,                        # batch_size take during training
+    batch_size = 4,                        # batch_size take during training
     epochs = 100,                            # total number of epoch
     learning_rate = 0.1,                   # learining rate
     freq_print = 10,
