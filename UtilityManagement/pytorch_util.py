@@ -11,6 +11,10 @@ def set_detphwise_conv(in_channel, out_channel, kernel=3, strides=1, padding=1):
     return nn.Conv2d(in_channel, out_channel, kernel_size=kernel, stride=strides, padding=padding, groups=in_channel)
 
 
+def set_adaptive_avg_pool(out_channel):
+    return nn.AdaptiveAvgPool2d(out_channel)
+
+
 def set_pointwise_conv(in_channel, out_channel, kernel, strides=1, padding=0):
     return nn.Conv2d(in_channel, out_channel, kernel_size=kernel, stride=strides, padding=padding)
 

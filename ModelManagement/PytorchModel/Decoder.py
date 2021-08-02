@@ -8,18 +8,19 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         low_level_inplanes = 256
 
-        self.conv1 = nn.Conv2d(low_level_inplanes, 48, 1, bias=False)
+        self.conv1 = set_conv(low_level_inplanes, 48, kernel=1, strides=1, padding=0)
         self.bn1 = set_batch_normalization(48)
-        self.relu = nn.ReLU()
-        self.last_conv = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        self.relu = set_relu()
+        self.last_conv = nn.Sequential(set_conv(304, 256, kernel=3, strides=1, padding=1),
                                        set_batch_normalization(256),
-                                       nn.ReLU(),
-                                       nn.Dropout(0.5),
-                                       nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+                                       set_relu(),
+                                       set_dropout(0.5),
+                                       set_conv(256, 256, kernel=3, strides=1, padding=1),
                                        set_batch_normalization(256),
-                                       nn.ReLU(),
-                                       nn.Dropout(0.1),
-                                       nn.Conv2d(256, num_classes, kernel_size=1, stride=1))
+                                       set_relu(),
+                                       set_dropout(0.1),
+                                       set_conv(256, num_classes, kernel=1, strides=1, padding=0))
+
         self._init_weight()
 
 
@@ -29,7 +30,7 @@ class Decoder(nn.Module):
         low_level_feat = self.relu(low_level_feat)
 
         x = F.interpolate(x, size=low_level_feat.size()[2:], mode='bilinear', align_corners=True)
-        x = torch.cat((x, low_level_feat), dim=1)
+        x = set_concat((x, low_level_feat), dim=1)
         x = self.last_conv(x)
 
         return x

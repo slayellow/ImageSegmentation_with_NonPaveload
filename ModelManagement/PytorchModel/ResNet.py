@@ -165,9 +165,8 @@ class ResNet(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * self.block.expansions:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * self.block.expansions, kernel_size=1,
-                          stride=stride, bias=False),
-                nn.BatchNorm2d(planes * self.block.expansions),
+                set_conv(self.inplanes, planes * self.block.expansions, kernel=1, strides=stride, padding=0),
+                set_batch_normalization(planes * self.block.expansions)
             )
 
         layers = []
@@ -182,9 +181,8 @@ class ResNet(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansions:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansions,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansions),
+                set_conv(self.inplanes, planes * self.block.expansions, kernel=1, strides=stride, padding=0),
+                set_batch_normalization(planes * self.block.expansions)
             )
 
         layers = []
