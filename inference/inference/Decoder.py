@@ -1,4 +1,4 @@
-from UtilityManagement.pytorch_util import *
+from inference.pytorch_util import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

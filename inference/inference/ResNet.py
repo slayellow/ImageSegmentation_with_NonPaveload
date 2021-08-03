@@ -1,8 +1,9 @@
-from UtilityManagement.pytorch_util import *
-import UtilityManagement.config as cf
+from inference.pytorch_util import *
+import inference.config as cf
 import math
 import os
 import warnings
+
 
 class BasicBlock(nn.Module):
     expansions = 1
