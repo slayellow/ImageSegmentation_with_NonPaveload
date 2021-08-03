@@ -29,7 +29,7 @@ def save_datalist():
 
 
 def decode_segmap(mask):
-    label_color = cf.palette
+    label_color = cf.road_palette
 
     r = mask.copy()
     g = mask.copy()

@@ -50,11 +50,8 @@ class NonpaveloadSegmentor(Node):
 
     def segmentation(self, img):
         transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0, 0, 0],
-                std=[1, 1, 1]
-            )])
+            transforms.Resize((cf.IMG_WIDTH, cf.IMG_HEIGHT), interpolation=transforms.InterpolationMode.NEAREST),
+            transforms.ToTensor()])
         tensor_to_image = transforms.ToPILImage()
         img = tensor_to_image(img)
         img_t = transform(img).cuda()
@@ -80,7 +77,7 @@ class NonpaveloadSegmentor(Node):
         segmap = self.segmentation(img)
 
         pub_img = self.bridge.cv2_to_imgmsg(segmap,"8UC3")
-        pub_img.header.frame_id = 'default'
+        pub_img.header.frame_id = 'ImageCCD'
 
         self.segmentation_publisher.publish(pub_img)
 
