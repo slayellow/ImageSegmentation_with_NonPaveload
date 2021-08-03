@@ -3,8 +3,8 @@ import torch
 from torchinfo import summary
 
 
-def set_conv(in_channel, out_channel, kernel=3, strides=1, dilation=1, padding=1):
-    return nn.Conv2d(in_channel, out_channel, kernel_size=kernel, stride=strides, dilation=dilation, padding=padding)
+def set_conv(in_channel, out_channel, kernel=3, strides=1, dilation=1, padding=1, bias=False):
+    return nn.Conv2d(in_channel, out_channel, kernel_size=kernel, stride=strides, dilation=dilation, padding=padding, bias=bias)
 
 
 def set_detphwise_conv(in_channel, out_channel, kernel=3, strides=1, padding=1):
