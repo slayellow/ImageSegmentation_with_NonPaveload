@@ -1,5 +1,5 @@
 import UtilityManagement.config as cf
-from ModelManagement.PytorchModel.ResNet import *
+from ModelManagement.PytorchModel.Xecption import *
 from ModelManagement.PytorchModel.ASPP import *
 from ModelManagement.PytorchModel.Decoder import *
 import math
@@ -7,18 +7,18 @@ import os
 import warnings
 
 
-class DeepLab_V3(nn.Module):
-    def __init__(self, layer_num, classes):
-        super(DeepLab_V3, self).__init__()
+class DeepLab_V3_Plus(nn.Module):
+    def __init__(self, classes):
+        super(DeepLab_V3_Plus, self).__init__()
 
-        self.model_name = 'DeepLab_V3'
+        self.model_name = 'DeepLab_V3_Plus'
 
-        self.resnet = ResNet101(layer_num, 1000)
+        self.xecption = load_Xception(1000)
         self.aspp = ASPP()
-        self.decoder = Decoder(classes, 'resnet')
+        self.decoder = Decoder(classes, "xecption")
 
     def forward(self, input):
-        x, low_level_feat = self.resnet(input)
+        x, low_level_feat = self.xecption(input)
         x = self.aspp(x)
         x = self.decoder(x, low_level_feat)
         x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
@@ -28,9 +28,9 @@ class DeepLab_V3(nn.Module):
         return self.model_name
 
 
-def DeepLab(layer_num, classes):
+def DeepLabV3Plus(classes):
     pretrained_path = cf.paths['pretrained_path']
-    model = DeepLab_V3(layer_num, classes)
+    model = DeepLab_V3_Plus(classes)
 
     if os.path.isfile(os.path.join(pretrained_path, model.get_name()+'.pth')):
         print('Pretrained Model!')
@@ -38,10 +38,3 @@ def DeepLab(layer_num, classes):
         load_weight_parameter(model, checkpoint['state_dict'])
 
     return model
-
-#
-# model = DeepLab(101, cf.NUM_CLASSES)
-# model.eval()
-# input = torch.rand([1, 3, 1052, 1914])
-# output = model(input)
-# print(output.size())

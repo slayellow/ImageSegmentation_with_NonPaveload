@@ -1,7 +1,7 @@
 import torch.autograd
 
 from DataManagement.data_management import *
-from ModelManagement.PytorchModel.DeepLab_V3 import *
+from ModelManagement.PytorchModel.DeepLab_V3_Plus import *
 from UtilityManagement.AverageMeter import *
 from ModelManagement.evaluator import Evaluator
 import time
@@ -21,7 +21,7 @@ validationset = GTA5Dataset(cf.paths['valid_dataset_file'])
 valid_loader = get_loader(validationset, batch_size=int(cf.network_info['batch_size']/2), shuffle=False, num_worker=cf.network_info['num_worker'])
 
 # model test code
-model = DeepLab(101, cf.NUM_CLASSES).to(devices)
+model = DeepLabV3Plus(cf.NUM_CLASSES).to(devices)
 
 criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='mean')
 

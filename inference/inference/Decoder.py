@@ -4,9 +4,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Decoder(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, backbone='xecption'):
         super(Decoder, self).__init__()
-        low_level_inplanes = 256
+
+        if backbone == 'xception':
+            low_level_inplanes = 128
+        elif backbone == 'resnet':
+            low_level_inplanes = 256
+        else:
+            low_level_inplanes = 128
 
         self.conv1 = set_conv(low_level_inplanes, 48, kernel=1, strides=1, padding=0, bias=False)
         self.bn1 = set_batch_normalization(48)
@@ -22,7 +28,6 @@ class Decoder(nn.Module):
                                        set_conv(256, num_classes, kernel=1, strides=1, padding=0))
 
         self._init_weight()
-
 
     def forward(self, x, low_level_feat):
         low_level_feat = self.conv1(low_level_feat)

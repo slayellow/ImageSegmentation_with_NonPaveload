@@ -15,7 +15,7 @@ class DeepLab_V3(nn.Module):
 
         self.resnet = ResNet101(layer_num, 1000)
         self.aspp = ASPP()
-        self.decoder = Decoder(classes)
+        self.decoder = Decoder(classes, 'resnet')
 
     def forward(self, input):
         x, low_level_feat = self.resnet(input)
