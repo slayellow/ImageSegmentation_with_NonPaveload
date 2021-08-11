@@ -18,12 +18,27 @@ paths = dict(
 #     validation_img_result_path = "/Users/jinseokhong/data/CalibNet_Result"
 # )
 
-IMG_SUB = "TruckMaker/Sensor/ImageCCD"
-IMG_PUB = "Segmentation"
+FRAME_ID = "default"
+
+IMG_SUB = "Device/InterfaceFrontCameraCCD"
+VELODYNE_SUB = "TruckMaker/Sensor/VelodyneFCPointCloud"
+INS_SUB = "TruckMaker/Sensor/INSData"
+SEGMENTATION_PUB = "Segmentation_Image"
+PROJECTION_PUB = "Projection_Image"
+PROBMAP_PUB = "Probability_Map"
+
+SE_VECTOR = [0.0, -10.0, 0.0, 3.2 - 4.079, 0.0, 2 - 1.591]
+
+INTRINSIC_PARAMETER = np.array(([
+    [320, 0, 320],
+    [0, 240, 240],
+    [0, 0, 1]
+]))
 
 IMG_WIDTH = 480
 IMG_HEIGHT = 640
 NUM_CLASSES = 19
+MAP_SIZE = 300
 # B, G, R
 road_palette = np.array([
     [255,0,0],
