@@ -1,5 +1,5 @@
-from UtilityManagement.pytorch_util import *
-import UtilityManagement.config as cf
+from inference.pytorch_util import *
+import inference.config as cf
 import os.path
 import math
 import torch.nn.functional as F

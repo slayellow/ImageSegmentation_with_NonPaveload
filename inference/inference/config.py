@@ -22,7 +22,7 @@ FRAME_ID = "default"
 
 IMG_SUB = "Device/InterfaceFrontCameraCCD"
 VELODYNE_SUB = "TruckMaker/Sensor/VelodyneFCPointCloud"
-INS_SUB = "TruckMaker/Sensor/INSData"
+INS_SUB = "TruckMaker/Sensor/NavSatFix"
 SEGMENTATION_PUB = "Segmentation_Image"
 PROJECTION_PUB = "Projection_Image"
 PROBMAP_PUB = "Probability_Map"

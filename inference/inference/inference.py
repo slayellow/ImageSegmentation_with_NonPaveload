@@ -1,10 +1,11 @@
 from inference.DeepLab_V3 import DeepLab
+from inference.DeepLab_V3_Plus import DeepLabV3Plus
 from inference.pytorch_util import *
 from inference.data_management import *
 import inference.config as cf
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image, Imu
+from sensor_msgs.msg import Image, NavSatFix
 from nav_msgs.msg import OccupancyGrid
 
 import multiprocessing
@@ -29,7 +30,8 @@ class NonpaveloadSegmentor(Node):
         gpu_check = is_gpu_avaliable()
         devices = torch.device("cuda") if gpu_check else torch.device("cpu")
 
-        self.model = DeepLab(101, cf.NUM_CLASSES).to(devices)
+        # self.model = DeepLab(101, cf.NUM_CLASSES).to(devices)
+        self.model = DeepLabV3Plus(cf.NUM_CLASSES).to(devices)
         self.model.eval()
         pretrained_path = cf.paths['pretrained_path']
         if os.path.isfile(os.path.join(pretrained_path, self.model.get_name() + '.pth')):
@@ -47,9 +49,9 @@ class NonpaveloadSegmentor(Node):
         self._segimg_mutex = threading.Lock()
         self._segimg_event = threading.Event()
 
-        self.ins_subscriber = self.create_subscription(Imu, cf.INS_SUB, self.on_ins, 100)
+        self.ins_subscriber = self.create_subscription(NavSatFix, cf.INS_SUB, self.on_ins, 100)
         print('INS Subscirber Create Success : ', cf.INS_SUB)
-        self._insdata = Imu()
+        self._insdata = NavSatFix()
 
         self.segmentation_publisher = self.create_publisher(Image, cf.SEGMENTATION_PUB, 100)
         print('Segmentation Image Publisher Create Success : ', cf.SEGMENTATION_PUB)
@@ -58,17 +60,17 @@ class NonpaveloadSegmentor(Node):
         # Use CV bridge to convert ROS Image to CV_image for visualizing in window
         self.bridge = CvBridge()
 
-        # self.projection_thread = threading.Thread(target=self.projection_threading)
-        # self.projection_thread.start()
+        self.projection_thread = threading.Thread(target=self.projection_threading)
+        self.projection_thread.start()
 
         t = threading.Thread(target=self.on_thread)
         t.start()
 
     def projection_threading(self):
-        left_top = [270, 280]
-        left_bottom = [20, 400]
-        right_top = [370, 280]
-        right_bottom = [620, 400]
+        left_top = [211, 266]
+        left_bottom = [83, 321]
+        right_top = [259, 266]
+        right_bottom = [272, 321]
 
         while self.projection_thread.is_alive():
             if self._segimg_event.wait(1):
@@ -87,6 +89,8 @@ class NonpaveloadSegmentor(Node):
 
                 probmap = self.prob_grid_map(img_result).astype(np.float)
                 probmap = cv2.GaussianBlur(probmap, (5, 5), 0).astype(np.int8)
+
+                ins = self.get_navigation()
 
                 map = OccupancyGrid()
                 map.header.frame_id = cf.FRAME_ID
@@ -108,7 +112,7 @@ class NonpaveloadSegmentor(Node):
 
     def on_thread(self):
         while True:
-            ins = self.get_navigation()
+
             img = self.get_image()
             if img is None:
                 print("Image is None")
@@ -132,11 +136,11 @@ class NonpaveloadSegmentor(Node):
     def prob_grid_map(self, img):
         map_size = cf.MAP_SIZE
 
-        m_pProbBlockImg = np.array([0] * map_size * map_size, dtype=np.int8).reshape((map_size, map_size))
-        m_pProbBlockImg[np.where(img == 0)] = 100
-        m_pProbBlockImg[np.where(img == 1)] = 100
-        m_pProbBlockImg[np.where(img == 3)] = 100
-        m_pProbBlockImg[np.where(img == 4)] = 100
+        m_pProbBlockImg = np.array([100] * map_size * map_size, dtype=np.int8).reshape((map_size, map_size))
+        m_pProbBlockImg[np.where(img == 0)] = 0
+        m_pProbBlockImg[np.where(img == 1)] = 0
+        m_pProbBlockImg[np.where(img == 3)] = 0
+        m_pProbBlockImg[np.where(img == 4)] = 0
         probability_map = m_pProbBlockImg
         return probability_map
 
