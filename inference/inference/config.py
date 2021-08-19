@@ -20,7 +20,7 @@ paths = dict(
 
 FRAME_ID = "default"
 
-IMG_SUB = "Device/InterfaceFrontCameraCCD"
+IMG_SUB = "Sensor/SensorData_ImageFrontCCD"
 VELODYNE_SUB = "TruckMaker/Sensor/VelodyneFCPointCloud"
 INS_SUB = "TruckMaker/Sensor/NavSatFix"
 SEGMENTATION_PUB = "Segmentation_Image"
@@ -30,8 +30,8 @@ PROBMAP_PUB = "Probability_Map"
 SE_VECTOR = [-80.0, 0.0, 0.0, 0.0, -1.7, 0.5]
 
 INTRINSIC_PARAMETER = np.array(([
-    [640, 0, 640],
-    [0, 540, 540],
+    [320, 0, 320],
+    [0, 240, 240],
     [0, 0, 1]
 ]))
 

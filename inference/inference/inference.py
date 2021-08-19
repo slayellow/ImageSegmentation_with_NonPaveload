@@ -126,7 +126,7 @@ class NonpaveloadSegmentor(Node):
                 pts2d = (ptr / ptr[2, :])
                 pts2d = pts2d[:-1, :].T
 
-                selected_indexes = (pts2d[:, 0] > 0) & (pts2d[:, 0] < 1280) & (pts2d[:, 1] > 0) & (pts2d[:, 1] < 1080)
+                selected_indexes = (pts2d[:, 0] > 0) & (pts2d[:, 0] < cf.IMG_HEIGHT) & (pts2d[:, 1] > 0) & (pts2d[:, 1] < cf.IMG_WIDTH)
                 masked_cloud = xyz_list[selected_indexes]
                 pts2d = pts2d[selected_indexes, :2]
 
