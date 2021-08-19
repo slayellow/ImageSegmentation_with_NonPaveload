@@ -8,7 +8,7 @@ paths = dict(
     ann_dir = "/home/HONG/GTA5_Dataset/ann_dir",
     train_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/train.txt",
     valid_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/valid.txt",
-    pretrained_path = "/home/HONG/PretrainedParameter",
+    pretrained_path = "/home/HONG/PretrainedParameter/GTA5_DeepLab_V3_Plus",
 )
 #
 # paths = dict(
