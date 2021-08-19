@@ -1,3 +1,5 @@
+import time
+
 from inference.DeepLab_V3 import DeepLab
 from inference.DeepLab_V3_Plus import DeepLabV3Plus
 from inference.pytorch_util import *
@@ -72,10 +74,6 @@ class NonpaveloadSegmentor(Node):
         self.image_subscriber = self.create_subscription(Image, cf.IMG_SUB, self.on_image, 10)
         print('Image Subscirber Create Success : ', cf.IMG_SUB)
         self._imagedata = None
-        self._segimg = None
-        self._segimg_test = None
-        self._segimg_mutex = threading.Lock()
-        self._segimg_event = threading.Event()
 
         self.ins_subscriber = self.create_subscription(NavSatFix, cf.INS_SUB, self.on_ins, 100)
         print('INS Subscirber Create Success : ', cf.INS_SUB)
@@ -92,11 +90,15 @@ class NonpaveloadSegmentor(Node):
         self._xyz_mutex = threading.Lock()
         self._xyz_event = threading.Event()
 
+        self._pts_mutex = threading.Lock()
+
         self.segmentation_publisher = self.create_publisher(Image, cf.SEGMENTATION_PUB, 100)
         print('Segmentation Image Publisher Create Success : ', cf.SEGMENTATION_PUB)
 
         self.probabilitymap_publisher = self.create_publisher(OccupancyGrid, cf.PROBMAP_PUB, 100)
         print("Probabilty Map Publisher Create Success : ", cf.PROBMAP_PUB)
+        self.masked_cloud = None
+        self.pts2d = None
 
         self.bridge = CvBridge()
 
@@ -106,16 +108,13 @@ class NonpaveloadSegmentor(Node):
         self.pointcloud_thread = threading.Thread(target=self.convert_pointcloud_to_xyz)
         self.pointcloud_thread.start()
 
-        # self.probmap_thread = threading.Thread(target=self.convert_segimg_to_probmap)
-        # self.probmap_thread.start()
-
-        # t = threading.Thread(target=self.on_thread)
-        # t.start()
+        t = threading.Thread(target=self.on_thread)
+        t.start()
 
     def project_xyz_to_img(self):
         while self.projection_thread.is_alive():
             if self._xyz_event.wait(1):
-                start = timer()
+                start = time.time()
                 self._xyz_mutex.acquire()
                 xyz_list = self._vlpdata.copy()
                 self._vlpdata = None
@@ -127,25 +126,22 @@ class NonpaveloadSegmentor(Node):
                 pts2d = pts2d[:-1, :].T
 
                 selected_indexes = (pts2d[:, 0] > 0) & (pts2d[:, 0] < cf.IMG_HEIGHT) & (pts2d[:, 1] > 0) & (pts2d[:, 1] < cf.IMG_WIDTH)
-                masked_cloud = xyz_list[selected_indexes]
-                pts2d = pts2d[selected_indexes, :2]
 
-                if self._imagedata is not None:
-                    segimg = self._imagedata.copy()
-                    red = [255, 255, 255]
-
-                    for pts in pts2d:
-                        segimg[int(pts[1]), int(pts[0])] = red
-
-                    cv2.imshow('img', segimg)
-                    cv2.waitKey(1)
+                self._pts_mutex.acquire()
+                self.masked_cloud = xyz_list[selected_indexes]
+                self.pts2d = pts2d[selected_indexes, :2]
+                self._pts_mutex.release()
 
                 self._xyz_event.clear()
+
+                end = time.time()
+
+                print("PointCloud --> 2D Point Time : ", str(end-start))
 
     def convert_pointcloud_to_xyz(self):
         while self.pointcloud_thread.is_alive():
             if self._vlp_event.wait(1):
-                start = timer()
+                start = time.time()
                 self._vlp_mutex.acquire()
                 pointcloud_list = self._vlplist.copy()
                 self._vlplist = []
@@ -155,9 +151,6 @@ class NonpaveloadSegmentor(Node):
                                    if pointcloud.y > 0]
                 pointcloud_list = np.array(pointcloud_list)
 
-                end = timer()
-                print("PointCloud --> XYZ Array Time : ", (end-start))
-
                 self._xyz_mutex.acquire()
                 self._vlpdata = pointcloud_list
                 self._xyz_mutex.release()
@@ -165,50 +158,41 @@ class NonpaveloadSegmentor(Node):
                 self._xyz_event.set()
 
                 self._vlp_event.clear()
+                end = time.time()
+                print("VLP16 11Data Acquire Time : ", str(end-start))
 
-    def convert_segimg_to_probmap(self):
-        left_top = [211, 266]
-        left_bottom = [83, 321]
-        right_top = [259, 266]
-        right_bottom = [272, 321]
+    def get_probabilitymap(self, segmap):
+        # Split Road_Cloud / Rest_Cloud
+        # Get Probability Map
+        map_size = cf.MAP_SIZE
+        map_center_x = int(map_size/2)
+        map_center_y = map_size
+        grid_resolution = 10
 
-        while self.probmap_thread.is_alive():
-            if self._segimg_event.wait(1):
-                self._segimg_event.clear()
-                start = timer()
-                self._segimg_mutex.acquire()
-                segimg = self._segimg.copy()
-                self._segimg_mutex.release()
+        self._pts_mutex.acquire()
+        pts2d = self.pts2d.copy()
+        masked_cloud = self.masked_cloud.copy()
+        self._pts_mutex.release()
 
-                pts1 = np.float32([left_top, right_top, left_bottom, right_bottom])
-                pts2 = np.float32([[0, 0], [cf.MAP_SIZE, 0], [0, cf.MAP_SIZE], [cf.MAP_SIZE, cf.MAP_SIZE]])
+        prob_map = np.array([-1] * map_size * map_size, dtype=np.int8).reshape((map_size, map_size))
+        road_img_point = []
 
-                M = cv2.getPerspectiveTransform(pts1, pts2)
-                img_result = cv2.warpPerspective(segimg, M, (cf.MAP_SIZE, cf.MAP_SIZE))
-                img_result = np.fliplr(img_result)
+        for i in range(0, pts2d.shape[0], 1):
+            pts2d_class = segmap[int(pts2d[i, 1]), int(pts2d[i, 0])]
+            if pts2d_class == 0 or pts2d_class == 1 or pts2d_class == 3 or pts2d_class == 4:
+                grid_x = map_center_x + int(masked_cloud[i, 0] * grid_resolution + 0.5)  # 0.5 ?
+                grid_y = map_center_y - int(masked_cloud[i, 1] * grid_resolution + 0.5)  # 0.5 ?
+                if 0 < grid_x < map_size and 0 < grid_y < map_size:
+                    prob_map[grid_y, grid_x] = 0
+                    road_img_point.append((grid_x, grid_y))
+            else:
+                grid_x = map_center_x + int(masked_cloud[i, 0] * grid_resolution + 0.5)  # 0.5 ?
+                grid_y = map_center_y - int(masked_cloud[i, 1] * grid_resolution + 0.5)  # 0.5 ?
+                if 0 < grid_x < map_size and 0 < grid_y < map_size:
+                    prob_map[grid_y, grid_x] = 100
+                    road_img_point.append((grid_x, grid_y))
 
-                probmap = self.prob_grid_map(img_result).astype(np.float)
-                probmap = cv2.GaussianBlur(probmap, (5, 5), 0).astype(np.int8)
-
-                ins = self.get_navigation()
-
-                map = OccupancyGrid()
-                map.header.frame_id = cf.FRAME_ID
-                map.data = np.reshape(probmap, [-1]).tolist()
-                map.info.width = cf.MAP_SIZE
-                map.info.height = cf.MAP_SIZE
-                map.info.resolution = 0.1
-                map.info.origin.position.x = -15.0
-                map.info.origin.position.y = -15.0
-                map.info.origin.position.z = 0.0
-                map.info.origin.orientation.x = 0.0
-                map.info.origin.orientation.y = 0.0
-                map.info.origin.orientation.z = 0.0
-
-                self.probabilitymap_publisher.publish(map)
-                end = timer()
-
-                print('Segmentation Image -> Probabilty Map Send Time : ', (end - start))
+        return prob_map, road_img_point
 
     def on_thread(self):
         while True:
@@ -217,21 +201,37 @@ class NonpaveloadSegmentor(Node):
                 print("Image is None")
                 continue
             else:
-                start = timer()
-                segmap, segmap_class = self.segmentation(img)
+                if self.pts2d is None and self.masked_cloud is None:
+                    print('Point Cloud is not Ready!')
+                    continue
+                else:
+                    start = timer()
 
-                pub_img = self.bridge.cv2_to_imgmsg(segmap, "8UC3")
-                pub_img.header.frame_id = cf.FRAME_ID
-                self.segmentation_publisher.publish(pub_img)
+                    prob_map, road_img_point = self.get_probabilitymap(img)
+                    prob_map = np.fliplr(prob_map)
+                    # prob_map = cv2.GaussianBlur(prob_map, (5, 5), 0).astype(np.int8)
+
+                    ins = self.get_navigation()
+
+                    map = OccupancyGrid()
+                    map.header.frame_id = cf.FRAME_ID
+                    map.data = np.reshape(prob_map, [-1]).tolist()
+                    map.info.width = cf.MAP_SIZE
+                    map.info.height = cf.MAP_SIZE
+                    map.info.resolution = 0.1
+                    map.info.origin.position.x = 15.0
+                    map.info.origin.position.y = 15.0
+                    map.info.origin.position.z = 0.0
+                    map.info.origin.orientation.x = 0.0
+                    map.info.origin.orientation.y = 0.0
+                    map.info.origin.orientation.z = 180.0
+
+                    self.probabilitymap_publisher.publish(map)
                 end = timer()
-                print("Image -> Segmentation Image Send Time: ", (end - start))
 
-                self._segimg_mutex.acquire()
-                self._segimg_test = segmap
-                self._segimg = segmap_class
-                self._segimg_mutex.release()
+                # print('Segmentation Image -> Probabilty Map Send Time : ', (end - start))
 
-                self._segimg_event.set()
+                time.sleep(0)
 
     def prob_grid_map(self, img):
         map_size = cf.MAP_SIZE
@@ -268,6 +268,7 @@ class NonpaveloadSegmentor(Node):
         return segmap, segmap_class
 
     def on_vlp(self, msg):
+        start = time.time()
         self._vlp_count += 1
 
         self._vlp_mutex.acquire()
@@ -277,6 +278,8 @@ class NonpaveloadSegmentor(Node):
         if self._vlp_count > 10:
             self._vlp_event.set()
             self._vlp_count = 0
+        end = time.time()
+        print("Receive VLP16 Data TIme : ", str(end-start))
 
     def on_ins(self, msg):
         self._insdata = msg
@@ -284,7 +287,19 @@ class NonpaveloadSegmentor(Node):
     def on_image(self, msg):
         img_data = np.asarray(msg.data)
         img = np.reshape(img_data, (msg.height, msg.width, 3))
-        self._imagedata = img
+
+        start = timer()
+        seg_map, seg_map_class = self.segmentation(img)
+
+        pub_img = self.bridge.cv2_to_imgmsg(seg_map, "8UC3")
+        pub_img.header.frame_id = cf.FRAME_ID
+        self.segmentation_publisher.publish(pub_img)
+        end = timer()
+        # print("Image -> Segmentation Image Send Time: ", (end - start))
+
+        self._imagedata = seg_map_class
+
+        time.sleep(0)
 
     def get_image(self):
         return self._imagedata
