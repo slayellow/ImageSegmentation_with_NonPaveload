@@ -27,11 +27,11 @@ SEGMENTATION_PUB = "Segmentation_Image"
 PROJECTION_PUB = "Projection_Image"
 PROBMAP_PUB = "Probability_Map"
 
-SE_VECTOR = [0.0, -10.0, 0.0, 3.2 - 4.079, 0.0, 2 - 1.591]
+SE_VECTOR = [-80.0, 0.0, 0.0, 0.0, -1.7, 0.5]
 
 INTRINSIC_PARAMETER = np.array(([
-    [320, 0, 320],
-    [0, 240, 240],
+    [640, 0, 640],
+    [0, 540, 540],
     [0, 0, 1]
 ]))
 
