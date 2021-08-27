@@ -8,7 +8,7 @@ paths = dict(
     ann_dir = "/home/HONG/GTA5_Dataset/ann_dir",
     train_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/train.txt",
     valid_dataset_file = "/home/HONG/ImageSegmentation_with_NonPaveload/DataManagement/valid.txt",
-    pretrained_path = "/home/HONG/PretrainedParameter/GTA5_DeepLab_V3_Plus",
+    pretrained_path = "/home/HONG/PretrainedParameter/GTA5_DeepLab_V3",
 )
 #
 # paths = dict(
@@ -27,7 +27,7 @@ SEGMENTATION_PUB = "Segmentation_Image"
 PROJECTION_PUB = "Projection_Image"
 PROBMAP_PUB = "Probability_Map"
 
-SE_VECTOR = [-80.0, 0.0, 0.0, 0.0, -1.7, 0.5]
+SE_VECTOR = [-90.0, 0.0, 0.0, 0.0, -0.622, -0.091]
 
 INTRINSIC_PARAMETER = np.array(([
     [320, 0, 320],
