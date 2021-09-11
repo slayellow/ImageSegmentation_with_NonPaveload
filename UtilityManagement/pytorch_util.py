@@ -44,7 +44,7 @@ def set_dense(in_channel, out_channel):
 
 
 def set_concat(list, axis=1):
-    return torch.cat(list, axis=axis)
+    return torch.cat(list, dim=axis)
 
 
 def set_dropout(rate=0.5):

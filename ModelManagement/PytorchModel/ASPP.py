@@ -58,8 +58,8 @@ class ASPP(nn.Module):
         x4 = self.aspp4(x)
         x5 = self.global_avg_pool(x)
         x5 = F.interpolate(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
-        x = set_concat((x1, x2, x3, x4, x5), axis=1)
-
+        # x = set_concat((x1, x2, x3, x4, x5), axis=1)
+        x = torch.cat([x1, x2, x3, x4, x5], dim=1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)

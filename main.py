@@ -1,5 +1,5 @@
 import torch.autograd
-
+import cv2
 from DataManagement.data_management import *
 from ModelManagement.PytorchModel.DeepLab_V3_Plus import *
 from UtilityManagement.AverageMeter import *
@@ -101,6 +101,7 @@ for epoch in range(start_epoch, cf.network_info['epochs']):
 
         source = sample_bathced['source']
         target = sample_bathced['target'].squeeze()
+
         target *= 255.0
         target = target.type(torch.long)
         if gpu_check:
